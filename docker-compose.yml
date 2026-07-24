@@ -1,0 +1,11 @@
+services:
+  proj1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Override the Functions host git ref if needed, e.g. release/4.x
+      args:
+        FUNCTIONS_HOST_REF: v4.1052.200
+    image: proj1-func
+    ports:
+      - "8080:80"

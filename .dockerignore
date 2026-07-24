@@ -1,0 +1,20 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# Local settings and secrets (never ship these into the image)
+local.settings.json
+
+# VS / VS Code
+.vs/
+.vscode/
+
+# Git / Docker
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Misc
+*.user
