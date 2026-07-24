@@ -44,8 +44,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS host-build
 
 # Branch or tag of Azure/azure-functions-host to build. Must be a ref whose
 # host projects target net8.0 so it can be built with the .NET 8 SDK above.
-# Override with: docker build --build-arg FUNCTIONS_HOST_REF=release/4.x .
-ARG FUNCTIONS_HOST_REF=v4.1052.200
+# NOTE: v4.10xx tags target net10.0 and require the .NET 10 SDK; the v4.8xx
+# tags are the .NET 8-era releases. v4.851.100 pins SDK 8.0.101 and targets
+# net8.0 (matching proj3's dotnet-isolated8.0 host).
+# Override with: docker build --build-arg FUNCTIONS_HOST_REF=<net8-host-tag> .
+ARG FUNCTIONS_HOST_REF=v4.851.100
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
@@ -61,11 +64,14 @@ RUN INSTALLED_SDK="$(dotnet --version)" \
     && sed -i -E "s/(\"version\"[[:space:]]*:[[:space:]]*)\"[0-9][^\"]*\"/\1\"${INSTALLED_SDK}\"/" global.json \
     && cat global.json
 
-# Publish only the WebHost project. The language worker runtimes - including the
-# dotnet-isolated worker (Microsoft.Azure.Functions.DotNetIsolatedNativeHost) -
-# are pulled in as NuGet packages and copied into the "workers" output folder.
+# Publish only the WebHost project for net8.0. This host ref multi-targets
+# (net8.0;net6.0), so the target framework must be specified explicitly. The
+# language worker runtimes - including the dotnet-isolated worker
+# (Microsoft.Azure.Functions.DotNetIsolatedNativeHost) - are pulled in as NuGet
+# packages and copied into the "workers" output folder.
 RUN dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj \
     -c Release \
+    -f net8.0 \
     -o /azure-functions-host
 
 # -----------------------------------------------------------------------------
