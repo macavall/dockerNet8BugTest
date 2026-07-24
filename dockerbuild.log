@@ -52,3 +52,69 @@
 #14 DONE 0.1s
 
 #15 [app-build 6/6] RUN dotnet publish proj1.csproj -c Release -o /home/site/wwwroot
+#15 1.300   Determining projects to restore...
+#15 1.730   All projects are up-to-date for restore.
+#15 ...
+
+#9 [host-build 2/6] RUN apt-get update     && apt-get install -y --no-install-recommends git     && rm -rf /var/lib/apt/lists/*
+#9 0.462 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+#9 0.494 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+#9 0.508 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [34.8 kB]
+#9 0.567 Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8790 kB]
+#9 0.894 Get:5 http://deb.debian.org/debian bookworm-updates/main amd64 Packages [6924 B]
+#9 0.895 Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [319 kB]
+#9 1.690 Fetched 9357 kB in 1s (7156 kB/s)
+#9 1.690 Reading package lists...
+#9 2.187 Reading package lists...
+#9 2.615 Building dependency tree...
+#9 2.734 Reading state information...
+#9 2.922 git is already the newest version (1:2.39.5-0+deb12u3).
+#9 2.922 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#9 DONE 3.0s
+
+#16 [host-build 3/6] WORKDIR /host-src
+#16 DONE 0.1s
+
+#17 [host-build 4/6] RUN git clone --depth 1 --branch "v4.851.100"     https://github.com/Azure/azure-functions-host.git .
+#17 0.335 Cloning into '.'...
+#17 1.444 Note: switching to '59bf426e437202ca00ee794bc4c8674afdfaea65'.
+#17 1.444 
+#17 1.444 You are in 'detached HEAD' state. You can look around, make experimental
+#17 1.444 changes and commit them, and you can discard any commits you make in this
+#17 1.444 state without impacting any branches by switching back to a branch.
+#17 1.444 
+#17 1.444 If you want to create a new branch to retain commits you create, you may
+#17 1.444 do so (now or later) by using -c with the switch command. Example:
+#17 1.444 
+#17 1.444   git switch -c <new-branch-name>
+#17 1.444 
+#17 1.444 Or undo this operation with:
+#17 1.444 
+#17 1.444   git switch -
+#17 1.444 
+#17 1.444 Turn off this advice by setting config variable advice.detachedHead to false
+#17 1.444 
+#17 DONE 1.7s
+
+#15 [app-build 6/6] RUN dotnet publish proj1.csproj -c Release -o /home/site/wwwroot
+#15 ...
+
+#18 [host-build 5/6] RUN INSTALLED_SDK="$(dotnet --version)"     && sed -i -E "s/("version"[[:space:]]*:[[:space:]]*)"[0-9][^"]*"/\1"${INSTALLED_SDK}"/" global.json     && cat global.json
+#18 0.520 {
+#18 0.520   "sdk": {
+#18 0.520     "version": "8.0.423",
+#18 0.520     "rollForward": "latestFeature"
+#18 0.520   },
+#18 0.520   "msbuild-sdks": {
+#18 0.520     "Microsoft.Build.NoTargets": "3.7.56",
+#18 0.520     "Microsoft.Build.Traversal": "4.1.0"
+#18 0.520   }
+#18 0.520 }
+#18 DONE 0.5s
+
+#19 [host-build 6/6] RUN dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj     -c Release     -f net8.0     -o /azure-functions-host
+#19 1.049   Determining projects to restore...
+#19 ...
+
+#15 [app-build 6/6] RUN dotnet publish proj1.csproj -c Release -o /home/site/wwwroot
+#15 6.065   Determining projects to restore...
