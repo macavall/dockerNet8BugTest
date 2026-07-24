@@ -72,13 +72,14 @@ RUN INSTALLED_SDK="$(dotnet --version)" \
 # default (240 B/s, 5s grace). Clients on slow/constrained links whose upload rate
 # drops below that for >5s get BadHttpRequestException. This limit is NOT
 # configurable from the function app, host.json, or app settings, so the fix must
-# be made in the host source. We inject "o.Limits.MinRequestBodyDataRate = null;"
-# into the existing ConfigureKestrel block. The build fails if the anchor line is
-# not found, so the patch can never silently no-op.
-RUN test -f src/WebJobs.Script.WebHost/Program.cs \
-    && grep -q "o.Limits.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;" src/WebJobs.Script.WebHost/Program.cs \
-    && sed -i '/o\.Limits\.MaxRequestBodySize = ScriptConstants\.DefaultMaxRequestBodySize;/a\                    o.Limits.MinRequestBodyDataRate = null;' src/WebJobs.Script.WebHost/Program.cs \
-    && grep -n "MinRequestBodyDataRate" src/WebJobs.Script.WebHost/Program.cs
+# be made in the host source.
+#
+# Rather than a build-time text substitution, the fix lives as a real, editable
+# source file in host-src-patched/ (see its ConfigureKestrel block, which adds
+# "o.Limits.MinRequestBodyDataRate = null;"). We overlay it onto the cloned host
+# before publishing. NOTE: the vendored file is pinned to
+# FUNCTIONS_HOST_REF=v4.851.100; refresh it if that ref changes.
+COPY host-src-patched/src/WebJobs.Script.WebHost/Program.cs src/WebJobs.Script.WebHost/Program.cs
 
 # Publish only the WebHost project for net8.0. This host ref multi-targets
 # (net8.0;net6.0), so the target framework must be specified explicitly. The
