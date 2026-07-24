@@ -35,12 +35,15 @@ RUN dotnet publish proj1.csproj -c Release -o /home/site/wwwroot
 # -----------------------------------------------------------------------------
 # Stage 2: Download and build the Azure Functions host from GitHub source
 #
-# The host is built with the exact .NET SDK the Functions team pins in the repo's
-# global.json (10.0.103 for the v4 release), even though the host targets net8.0.
+# The host targets net8.0, so we build it with the .NET 8 SDK (matching proj3,
+# which uses the prebuilt dotnet-isolated8.0 host image). The global.json in the
+# host repo may pin a different SDK patch; the normalization step below rewrites
+# it to the .NET 8 SDK actually installed in this image so the build succeeds.
 # -----------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:10.0.103 AS host-build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS host-build
 
-# Branch or tag of Azure/azure-functions-host to build.
+# Branch or tag of Azure/azure-functions-host to build. Must be a ref whose
+# host projects target net8.0 so it can be built with the .NET 8 SDK above.
 # Override with: docker build --build-arg FUNCTIONS_HOST_REF=release/4.x .
 ARG FUNCTIONS_HOST_REF=v4.1052.200
 
@@ -68,19 +71,11 @@ RUN dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj \
 # -----------------------------------------------------------------------------
 # Stage 3: Runtime image - locally built host + published function app
 #
-# The host (v4 release) runs on .NET 10, while the isolated app worker runs on
-# .NET 8. Since the worker is a separate process, the image needs BOTH runtimes:
-#   - ASP.NET Core 10 runtime  -> the Functions host
-#   - ASP.NET Core 8 runtime   -> the dotnet-isolated app worker
-# We base on the .NET 10 ASP.NET image and copy the .NET 8 shared frameworks in.
+# Both the Functions host and the dotnet-isolated app worker run on .NET 8, so a
+# single ASP.NET Core 8 runtime image covers both processes (no extra shared
+# frameworks need to be copied in).
 # -----------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS dotnet8
-
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
-
-# Add the .NET 8 shared frameworks so the isolated worker process can run.
-COPY --from=dotnet8 /usr/share/dotnet/shared/Microsoft.NETCore.App /usr/share/dotnet/shared/Microsoft.NETCore.App
-COPY --from=dotnet8 /usr/share/dotnet/shared/Microsoft.AspNetCore.App /usr/share/dotnet/shared/Microsoft.AspNetCore.App
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
 # The Azure Functions host we built from source.
 COPY --from=host-build /azure-functions-host /azure-functions-host
