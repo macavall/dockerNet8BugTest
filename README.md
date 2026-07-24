@@ -28,15 +28,16 @@ required to reproduce the slow-upload timeout described in
 The [Dockerfile](Dockerfile) uses a 3-stage build:
 
 1. **app-build** (`dotnet/sdk:8.0`) — publishes this function app to `/home/site/wwwroot`.
-2. **host-build** (`dotnet/sdk:10.0.103`) — clones `Azure/azure-functions-host` at
-   `FUNCTIONS_HOST_REF` and runs `dotnet publish` on the WebHost project. The
-   dotnet-isolated worker is pulled in as a NuGet package and copied into `workers/`.
-3. **runtime** (`dotnet/aspnet:10.0` + .NET 8 shared frameworks) — combines the
-   locally built host with the published app.
+2. **host-build** (`dotnet/sdk:8.0`) — clones `Azure/azure-functions-host` at
+   `FUNCTIONS_HOST_REF` (default `v4.851.100`) and runs `dotnet publish -f net8.0` on the
+   WebHost project. The dotnet-isolated worker is pulled in as a NuGet package and copied
+   into `workers/`.
+3. **runtime** (`dotnet/aspnet:8.0`) — combines the locally built host with the published app.
 
-> The v4 host targets **.NET 10** (hence the SDK 10.0.103 pin), while the isolated app
-> worker runs on **.NET 8**. The worker is a separate process, so the runtime image ships
-> both the .NET 10 (host) and .NET 8 (worker) ASP.NET Core runtimes.
+> This repo pins `FUNCTIONS_HOST_REF` to **`v4.851.100`**, a .NET 8-era host tag, so the
+> host and the isolated worker **both target .NET 8** and a single ASP.NET Core 8 runtime
+> image covers both processes. (Newer v4.10xx host tags target **.NET 10** and would
+> require the .NET 10 SDK/runtime instead — see the note in the Dockerfile.)
 
 ## Build
 
