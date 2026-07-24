@@ -118,3 +118,49 @@
 
 #15 [app-build 6/6] RUN dotnet publish proj1.csproj -c Release -o /home/site/wwwroot
 #15 6.065   Determining projects to restore...
+#15 ...
+
+#19 [host-build 6/6] RUN dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj     -c Release     -f net8.0     -o /azure-functions-host
+#19 46.17   Restored /host-src/src/WebJobs.Script/WebJobs.Script.csproj (in 43.56 sec).
+#19 46.18   Restored /host-src/src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj (in 43.56 sec).
+#19 60.94   Restored /host-src/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj (in 58.31 sec).
+#19 68.22   WebJobs.Script -> /host-src/out/bin/WebJobs.Script/release_net8.0/Microsoft.Azure.WebJobs.Script.dll
+#19 ...
+
+#15 [app-build 6/6] RUN dotnet publish proj1.csproj -c Release -o /home/site/wwwroot
+#15 73.87   Restored /src/obj/Release/net8.0/WorkerExtensions/WorkerExtensions.csproj (in 1.13 min).
+#15 74.29   WorkerExtensions -> /src/obj/Release/net8.0/WorkerExtensions/bin/Release/net8.0/Microsoft.Azure.Functions.Worker.Extensions.dll
+#15 75.79   proj1 -> /src/bin/Release/net8.0/proj1.dll
+#15 75.82   proj1 -> /home/site/wwwroot/
+#15 DONE 76.5s
+
+#19 [host-build 6/6] RUN dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj     -c Release     -f net8.0     -o /azure-functions-host
+#19 70.50   WebJobs.Script.Grpc -> /host-src/out/bin/WebJobs.Script.Grpc/release_net8.0/Microsoft.Azure.WebJobs.Script.Grpc.dll
+#19 77.67   WebJobs.Script.WebHost -> /host-src/out/bin/WebJobs.Script.WebHost/release_net8.0/Microsoft.Azure.WebJobs.Script.WebHost.dll
+#19 81.40   WebJobs.Script.WebHost -> /azure-functions-host/
+#19 DONE 81.8s
+
+#7 [stage-2 1/3] FROM mcr.microsoft.com/dotnet/aspnet:8.0@sha256:8f6a307ae32fb393a4b4bcde0a81f0ce3f0a715de0e5575df71f3030448f2dde
+#7 CACHED
+
+#20 [stage-2 2/3] COPY --from=host-build /azure-functions-host /azure-functions-host
+#20 DONE 2.6s
+
+#21 [stage-2 3/3] COPY --from=app-build /home/site/wwwroot /home/site/wwwroot
+#21 DONE 0.2s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 32.6s done
+#22 exporting manifest sha256:a75963cf0d778b2aa0bc362a105a0296d5939d21fbe0219cc568e4f61e4829ab 0.0s done
+#22 exporting config sha256:3ca6b6c970610b752820ee7c688dc548d975e23c5ff98299578450394067590e 0.0s done
+#22 exporting attestation manifest sha256:ee0978b4083d81f103f3485ec7415920de3e24eac3ee1e62b410e7996772390d
+#22 exporting attestation manifest sha256:ee0978b4083d81f103f3485ec7415920de3e24eac3ee1e62b410e7996772390d 0.1s done
+#22 exporting manifest list sha256:84b75c06de782416f7a265df10b8539a749557e7388713079c07ec1d25e711be 0.0s done
+#22 naming to localhost:5000/net8migration:latest
+#22 naming to localhost:5000/net8migration:latest done
+#22 unpacking to localhost:5000/net8migration:latest
+#22 unpacking to localhost:5000/net8migration:latest 7.6s done
+#22 DONE 40.4s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/um7lkusielq8zuz4q866lzh43
