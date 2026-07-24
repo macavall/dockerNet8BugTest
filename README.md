@@ -189,6 +189,43 @@ function body executes.
   limit is not customer-configurable, so the recommended production workaround is a
   **direct-to-blob upload via a short-lived SAS URI**, bypassing Kestrel entirely.
 
+### Host-side source fix (applied in this repo)
+
+Because this image builds the Azure Functions host from source, we can fix the root cause
+directly on the **host's** client-facing Kestrel (port 80) — the layer a customer cannot
+configure on the managed platform. In the host's
+`src/WebJobs.Script.WebHost/Program.cs`, `CreateWebHostBuilder()` sets only
+`MaxRequestBodySize`, leaving `MinRequestBodyDataRate` at its default (240 B/s, 5s grace).
+Setting it to `null` disables the slow-upload monitor:
+
+```csharp
+.ConfigureKestrel(o =>
+{
+    o.Limits.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
+    // Disable the host Kestrel's slow-upload rate monitor (MinRequestBodyDataRate,
+    // default 240 B/s / 5s grace). This limit is not configurable from the function
+    // app, host.json, or app settings, so it must be relaxed here on the host's
+    // client-facing Kestrel (port 80).
+    o.Limits.MinRequestBodyDataRate = null;
+})
+```
+
+The fix lives as a real, editable source file at
+[host-src-patched/src/WebJobs.Script.WebHost/Program.cs](host-src-patched/src/WebJobs.Script.WebHost/Program.cs)
+(vendored from tag `v4.851.100`). The [Dockerfile](Dockerfile) overlays it onto the cloned
+host source before publishing, and [proj1.csproj](proj1.csproj) excludes
+`host-src-patched/**` from the app's own compilation.
+
+> **Both** Kestrel layers must be relaxed. This host-source change fixes the platform
+> Kestrel; the worker's Kestrel is handled separately in [Program.cs](Program.cs) via the
+> `IConfigureOptions<KestrelServerOptions>` registration shown above. With both applied, a
+> slow upload at ~2.6 B/s completes with `200 OK` instead of failing at ~5s.
+
+> **This is a platform-side change** to `azure-functions-host` and is only possible here
+> because the image builds the host from source. A customer on the managed platform cannot
+> apply it and should use the direct-to-blob SAS workaround until such a change ships in
+> the product.
+
 ## Notes
 
 - `local.settings.json` is **not** copied into the image (excluded via [.dockerignore](.dockerignore)).
