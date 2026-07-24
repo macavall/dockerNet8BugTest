@@ -8,6 +8,14 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Vendored Azure Functions host source (overlaid onto the cloned host during the
+       Docker build - see Dockerfile). It is NOT part of this app and must be excluded
+       from the app's compilation, which otherwise globs **/*.cs. -->
+  <ItemGroup>
+    <Compile Remove="host-src-patched/**/*.cs" />
+    <None Remove="host-src-patched/**/*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
