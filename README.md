@@ -7,11 +7,16 @@ inside the image, then combined with the published function app.
 
 Verified with **Docker Desktop on Windows** (Linux containers).
 
-## Function
+## Functions
 
-| Name    | Trigger      | Auth level | Route              |
-| ------- | ------------ | ---------- | ------------------ |
-| `http1` | HTTP (GET/POST) | Anonymous | `/api/http1`       |
+| Name            | Trigger         | Auth level | Route                  |
+| --------------- | --------------- | ---------- | ---------------------- |
+| `http1`         | HTTP (GET/POST) | Anonymous  | `/api/http1`           |
+| `UploadContent` | HTTP (POST)     | Anonymous  | `/api/UploadContent`   |
+
+`UploadContent` fully reads the request body (`req.Body.CopyToAsync(...)`), which is
+required to reproduce the slow-upload timeout described in
+[Reproducing the MinRequestBodyDataRate timeout](#reproducing-the-minrequestbodydatarate-timeout).
 
 ## Prerequisites
 
@@ -106,6 +111,83 @@ To enable Application Insights / Azure Monitor telemetry, pass a connection stri
 ```powershell
 docker run -p 8080:80 -e APPLICATIONINSIGHTS_CONNECTION_STRING="<your-connection-string>" proj1-func
 ```
+
+## Reproducing the MinRequestBodyDataRate timeout
+
+This repo can reproduce the Kestrel slow-upload failure:
+
+```
+Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException:
+Reading the request body timed out due to data arriving too slowly. See MinRequestBodyDataRate.
+```
+
+### Why it happens
+
+Kestrel enforces a minimum request-body data rate (default **240 bytes/sec** with a
+**5 second grace period**). The limit is only enforced **while the request body is being
+read** — so an endpoint that ignores the body (like `http1`) never triggers it. The
+`UploadContent` function reads the full body, so any client that trickles bytes below
+240 B/s for more than 5 seconds gets its connection aborted, and the invocation fails
+during parameter binding (before user code runs).
+
+### Steps
+
+1. Run the container:
+
+   ```powershell
+   docker run -d --name proj1-run -p 8080:80 proj1-func
+   ```
+
+2. Run the throttled client ([slow-upload.ps1](slow-upload.ps1)), which opens a raw TCP
+   socket, sends a `POST /api/UploadContent` with a fixed `Content-Length`, then sends
+   ~8 bytes every 3s (~2.6 B/s — well under 240 B/s):
+
+   ```powershell
+   ./slow-upload.ps1 -Port 8080
+   ```
+
+   The client aborts partway through with *"An established connection was aborted by the
+   software in your host machine"* — this is the server closing the connection.
+
+3. Confirm the server-side exception in the container logs:
+
+   ```powershell
+   docker logs --tail 60 proj1-run 2>&1 | Select-String "MinRequestBodyDataRate|BadHttpRequestException"
+   ```
+
+### Observed result
+
+```
+fail: Function.UploadContent[3]
+      Executed 'Functions.UploadContent' (Failed, Duration=~5400ms)
+      Microsoft.Azure.WebJobs.Host.FunctionInvocationException: Exception while executing function: Functions.UploadContent
+       ---> System.InvalidOperationException: Exception binding parameter 'req'
+       ---> Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException: Reading the request body timed out due to data arriving too slowly. See MinRequestBodyDataRate.
+         at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.Http1ContentLengthMessageBody.ReadAsyncInternal(CancellationToken cancellationToken)
+```
+
+The `Duration` (~5.4s) matches the default 5-second grace period, and the failure
+surfaces as `Exception binding parameter 'req'` — the body read fails before the
+function body executes.
+
+### Notes on Azure Functions deployments
+
+- **No host.json or app-setting override exists** for `MinRequestBodyDataRate`. Kestrel
+  `Limits` are not bound from configuration, so env vars like
+  `Kestrel__Limits__MinRequestBodyDataRate__BytesPerSecond` have no effect.
+- The correct worker-side fix (new SDK style) is to configure Kestrel options directly:
+
+  ```csharp
+  builder.Services.AddSingleton<IConfigureOptions<KestrelServerOptions>>(
+      new ConfigureNamedOptions<KestrelServerOptions>(Options.DefaultName, o =>
+          o.Limits.MinRequestBodyDataRate = null));
+  ```
+
+  `PostConfigure<KestrelServerOptions>` on the outer host builder does **not** work.
+- In a deployed Isolated Worker + ASP.NET Core integration app, requests pass through
+  **two** Kestrel servers (platform host on port 80, then the worker). The host's Kestrel
+  limit is not customer-configurable, so the recommended production workaround is a
+  **direct-to-blob upload via a short-lived SAS URI**, bypassing Kestrel entirely.
 
 ## Notes
 
